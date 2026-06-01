@@ -9,7 +9,7 @@ final class Transcriber {
 
     func load() async {
         do {
-            kit = try await WhisperKit(model: "openai_whisper-small.en", verbose: false)
+            kit = try await WhisperKit(model: "openai_whisper-medium.en", verbose: false)
             isReady = true
             print("VTT: model ready")
         } catch {
