@@ -1,29 +1,38 @@
-import Foundation
+import AppKit
 import CoreGraphics
 
 enum Typer {
     private static let punctuationStart = CharacterSet(charactersIn: ".,!?;:)]}\"'")
 
-    /// Injects `text` at the current cursor position using CGEvent Unicode string injection.
-    /// Prepends a space unless the text starts with punctuation.
     static func type(_ text: String) {
         var output = text
         if let first = text.unicodeScalars.first, !punctuationStart.contains(first) {
             output = " " + text
         }
+        guard !output.isEmpty else { return }
 
+        let pasteboard = NSPasteboard.general
+        let saved = pasteboard.string(forType: .string)
+
+        pasteboard.clearContents()
+        pasteboard.setString(output, forType: .string)
+
+        // Simulate ⌘V to paste into whatever app has focus
         let source = CGEventSource(stateID: .hidSystemState)
-        let utf16 = Array(output.utf16)
-        guard !utf16.isEmpty else { return }
+        if let down = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
+           let up   = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) {
+            down.flags = .maskCommand
+            up.flags   = .maskCommand
+            down.post(tap: .cgSessionEventTap)
+            up.post(tap: .cgSessionEventTap)
+        }
 
-        guard
-            let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
-            let up   = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
-        else { return }
+        // Restore clipboard after paste lands
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            pasteboard.clearContents()
+            if let saved { pasteboard.setString(saved, forType: .string) }
+        }
 
-        down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-        up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-        down.post(tap: .cgAnnotatedSessionEventTap)
-        up.post(tap: .cgAnnotatedSessionEventTap)
+        print("VTT: typed → \"\(output)\"")
     }
 }
