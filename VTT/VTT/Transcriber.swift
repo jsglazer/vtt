@@ -61,7 +61,12 @@ final class Transcriber {
         Task.detached(priority: .userInitiated) { [weak self] in
             defer { self?.onTranscriptionDone?() }
             do {
-                let options = DecodingOptions(task: .transcribe, language: "en")
+                let options = DecodingOptions(
+                    task: .transcribe,
+                    language: "en",
+                    sampleLength: 128,       // cap at ~100 words per segment; skips excess decoder steps
+                    withoutTimestamps: true  // skip timestamp alignment — not needed for typing
+                )
                 let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
                 let text = results
                     .map { $0.text }

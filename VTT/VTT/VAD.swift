@@ -2,10 +2,10 @@ import Foundation
 
 final class VAD {
     var speechThreshold: Float = 0.02
-    // Minimum samples before a segment can close (~1 s at 16 kHz)
-    var minSpeechSamples: Int = 16_000
-    // Silence samples needed to close an utterance (~0.6 s at 16 kHz)
-    var silenceSamples: Int = 9_600
+    // Minimum samples before a segment can close (~0.5 s at 16 kHz)
+    var minSpeechSamples: Int = 8_000
+    // Silence samples needed to close an utterance (~0.4 s at 16 kHz)
+    var silenceSamples: Int = 6_400
     // Pre-roll: audio captured before RMS crosses the threshold (~0.5 s at 16 kHz).
     // Prevents the first syllable of each utterance from being clipped.
     private let prerollCapacity = 8_000
