@@ -65,6 +65,7 @@
 			);
 			name = VTT;
 			packageProductDependencies = (
+				03700E932FCE25F000AC2CFB /* WhisperKit */,
 			);
 			productName = VTT;
 			productReference = 03700E4F2FCE24EC00AC2CFB /* VTT.app */;
@@ -94,6 +95,9 @@
 			);
 			mainGroup = 03700E462FCE24EC00AC2CFB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 03700E502FCE24EC00AC2CFB /* Products */;
 			projectDirPath = "";
@@ -321,6 +325,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		03700E932FCE25F000AC2CFB /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 03700E472FCE24EC00AC2CFB /* Project object */;
 }
