@@ -27,19 +27,34 @@ final class Transcriber {
         "[Applause]", "[applause]",
     ]
 
-    private static let soundEffectRegex = try? NSRegularExpression(pattern: "\\([^)]*\\)")
+    // Strips both (parenthetical) and [bracket] Whisper annotation forms
+    private static let annotationRegex = try? NSRegularExpression(pattern: "\\([^)]*\\)|\\[[^\\]]*\\]")
+
+    // Spoken phrase → inserted text. Matched case-insensitively anywhere in the utterance.
+    private static let voiceCommands: [(phrase: String, replacement: String)] = [
+        ("new paragraph", "\n\n"),
+        ("new para",      "\n\n"),
+        ("new line",      "\n"),
+    ]
 
     private static func clean(_ raw: String) -> String {
         var text = raw
         for token in noiseTokens {
             text = text.replacingOccurrences(of: token, with: "")
         }
-        // Strip Whisper sound-effect annotations: (sniffles), (keyboard clacking), etc.
-        if let re = soundEffectRegex {
+        if let re = annotationRegex {
             let range = NSRange(text.startIndex..., in: text)
             text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
         }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func applyCommands(_ text: String) -> String {
+        var result = text
+        for (phrase, replacement) in voiceCommands {
+            result = result.replacingOccurrences(of: phrase, with: replacement, options: .caseInsensitive)
+        }
+        return result
     }
 
     /// Enqueues transcription on a background Task. Calls `onSegment` when text is ready.
@@ -55,9 +70,9 @@ final class Transcriber {
                     .joined(separator: " ")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 print("VTT: transcribed → \"\(text)\"")
-                let clean = Self.clean(text)
-                guard !clean.isEmpty else { return }
-                self?.onSegment?(clean)
+                let processed = Self.applyCommands(Self.clean(text))
+                guard !processed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                self?.onSegment?(processed)
             } catch {
                 print("VTT: transcription error — \(error)")
             }

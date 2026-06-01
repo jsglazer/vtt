@@ -2,11 +2,16 @@ import AppKit
 import ApplicationServices
 
 enum Typer {
-    private static let punctuationStart = CharacterSet(charactersIn: ".,!?;:)]}\"'")
+    // Characters that should follow the previous word directly, without a leading space
+    private static var noLeadingSpace: CharacterSet = {
+        var cs = CharacterSet(charactersIn: ".,!?;:)]}\"'")
+        cs.formUnion(.newlines)
+        return cs
+    }()
 
     static func type(_ text: String) {
         var output = text
-        if let first = text.unicodeScalars.first, !punctuationStart.contains(first) {
+        if let first = text.unicodeScalars.first, !noLeadingSpace.contains(first) {
             output = " " + text
         }
         guard !output.isEmpty else { return }
