@@ -2,35 +2,35 @@
 
 A macOS menu bar app that transcribes your voice and types the text wherever your cursor is. Press a hotkey to start speaking; words appear at the cursor as you talk.
 
+Built in Swift using [WhisperKit](https://github.com/argmaxinc/WhisperKit) — Apple Silicon native, CoreML/ANE optimized, fully offline.
+
 ## Features
 
-- **Streaming output** — text appears progressively as speech is recognized, not after you stop talking
+- **Streaming output** — text appears progressively as speech segments are recognized
 - **Types at cursor** — works in any app: editors, browsers, terminals, chat
 - **Menu bar icon** — shows idle / recording / transcribing state without a Dock presence
-- **Powered by faster-whisper** — accurate, offline transcription using the OpenAI Whisper `small` model
-- **VAD-gated** — voice activity detection prevents transcribing silence or background noise
+- **WhisperKit** — CoreML-accelerated Whisper `small.en` model, optimized for Apple Neural Engine
+- **Energy VAD** — simple RMS-based voice activity detection gates transcription cleanly
 
 ## Requirements
 
-- macOS 12+
-- Python 3.10+
-- ~500 MB disk space for the Whisper model (downloaded on first run)
+- macOS 13+
+- Apple Silicon Mac (M1 or later) recommended
+- Xcode command-line tools or Xcode (for `swift build`)
+- ~250 MB disk space for the WhisperKit CoreML model (downloaded on first run)
 
 ## Installation
 
 ```bash
 git clone https://github.com/jsglazer/vtt.git
 cd vtt
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+swift build -c release
 ```
 
 ## Usage
 
 ```bash
-source .venv/bin/activate
-python3 vtt.py
+.build/release/VTT
 ```
 
 The app starts silently in the macOS menu bar as `🎤`.
@@ -49,68 +49,72 @@ The app starts silently in the macOS menu bar as `🎤`.
 
 ### First run
 
-macOS will prompt for two permissions on first launch:
+macOS will prompt for two permissions:
 
 1. **Microphone** — required for audio capture
-2. **Accessibility** — required for the global hotkey and typing at the cursor
+2. **Accessibility** — required for the global hotkey (`⌘⇧Space`) and typing at the cursor
 
-Both can be granted via **System Settings → Privacy & Security**. The app must be restarted after granting Accessibility access.
+Both can be granted via **System Settings → Privacy & Security**. Restart after granting Accessibility access.
 
-The Whisper `small` model (~500 MB) is downloaded automatically to `~/.cache/huggingface/hub/` the first time a transcription runs.
+The WhisperKit `small.en` CoreML model (~250 MB) is downloaded automatically on the first transcription. Subsequent runs use the local cache at `~/Library/Caches/huggingface/`.
+
+> **Tip:** The first hotkey press after launch may feel slow if the model is still loading. Wait for "VTT: model ready" in the console, or just try again in a few seconds.
 
 ## Architecture
 
 ```
-⌘⇧Space
-  └── hotkey.py       GlobalHotKeys toggle
-        └── audio.py  sounddevice 16 kHz mono stream (30ms frames)
-              └── vad.py     webrtcvad ring-buffer speech detection
-                    └── transcriber.py  faster-whisper small/int8/en
-                          └── typer.py  pynput keyboard injection at cursor
+⌘⇧Space (Carbon RegisterEventHotKey)
+  └── HotkeyManager      toggle callback → main thread
+        └── VTTController
+              ├── AudioCapture    AVAudioEngine → resample to 16 kHz mono
+              │     └── VAD       RMS energy gating → speech segments
+              │           └── Transcriber   WhisperKit small.en (CoreML)
+              │                 └── Typer   CGEvent Unicode injection at cursor
+              └── StatusBarController   NSStatusItem menu bar
 ```
 
-- **`vtt.py`** — entry point; wires components and runs the rumps main loop
-- **`audio.py`** — captures 16 kHz mono audio in 480-sample (30ms) frames via `sounddevice`
-- **`vad.py`** — ring-buffer VAD state machine: 75% voiced frames to open, 75% silent frames to close a speech segment
-- **`transcriber.py`** — worker thread; runs `faster-whisper` with `int8` quantization, language locked to English
-- **`typer.py`** — injects text via `pynput`; prepends a space unless the segment starts with punctuation
-- **`hotkey.py`** — global hotkey listener via `pynput.GlobalHotKeys`
-- **`menubar.py`** — `rumps` menu bar app; all icon updates dispatched to the main thread via `@rumps.timer`
+### Source files
+
+| File | Purpose |
+|---|---|
+| `main.swift` | NSApplication setup, `.accessory` policy (no Dock icon) |
+| `AppDelegate.swift` | App lifecycle, kicks off async model load |
+| `VTTController.swift` | Orchestrates all components, owns recording state |
+| `StatusBarController.swift` | `NSStatusItem` menu bar, main-thread-safe updates |
+| `HotkeyManager.swift` | Carbon `RegisterEventHotKey` for ⌘⇧Space |
+| `AudioCapture.swift` | `AVAudioEngine` tap + `AVAudioConverter` to 16 kHz mono |
+| `VAD.swift` | RMS energy VAD — opens on voiced frames, closes on silence |
+| `Transcriber.swift` | `WhisperKit` wrapper, background `Task`, English-only |
+| `Typer.swift` | `CGEvent` Unicode string injection at active cursor |
 
 ## Configuration
 
-Defaults are set as constants at the top of each module:
+Constants at the top of each source file:
 
 | File | Constant | Default | Description |
 |---|---|---|---|
-| `hotkey.py` | `HOTKEY` | `<cmd>+<shift>+space` | Activation hotkey |
-| `transcriber.py` | `MODEL_SIZE` | `small` | Whisper model size (`tiny`, `base`, `small`, `medium`, `large-v2`) |
-| `vad.py` | `VOICED_RATIO` | `0.75` | Fraction of voiced frames to start a segment |
-| `vad.py` | `SILENCE_RATIO` | `0.75` | Fraction of silent frames to end a segment |
-| `vad.py` | `RING_BUFFER_SIZE` | `20` | VAD window size in frames (20 × 30ms = 600ms) |
+| `HotkeyManager.swift` | `kVK_Space` + `cmdKey\|shiftKey` | `⌘⇧Space` | Activation hotkey |
+| `Transcriber.swift` | `model:` | `openai_whisper-small.en` | WhisperKit model |
+| `VAD.swift` | `speechThreshold` | `0.01` | RMS level to start speech |
+| `VAD.swift` | `minSpeechSamples` | `16000` | Min samples before closing (~1 s) |
+| `VAD.swift` | `silenceSamples` | `9600` | Silence needed to close utterance (~0.6 s) |
 
 ## Troubleshooting
 
 **Hotkey does nothing**
-Grant Accessibility permission in **System Settings → Privacy & Security → Accessibility**, then restart the app.
+Grant Accessibility permission in **System Settings → Privacy & Security → Accessibility**, then restart.
 
 **No transcription / nothing typed**
 Grant Microphone permission in **System Settings → Privacy & Security → Microphone**, then restart.
 
-**Text appears with wrong spacing**
-The typer prepends a space before each segment unless it starts with punctuation. If you need no leading space at the start of a document or field, position your cursor after at least one character first.
+**"VTT: model still loading"** printed to console
+The WhisperKit model takes a few seconds to initialize. Wait for "VTT: model ready" before pressing the hotkey.
 
-**Slow first transcription**
-The model downloads ~500 MB on first use. Subsequent runs use the local cache.
+**Text appears with leading space**
+By design — each recognized segment is prefixed with a space. If you need text at the very start of a field, position the cursor after at least one character first.
 
-**webrtcvad import error on Python 3.13**
-The installed `webrtcvad` uses `pkg_resources` which is unavailable in Python 3.13 venvs. Patch it:
-```bash
-sed -i '' 's/import pkg_resources/import importlib.metadata/' \
-  .venv/lib/python3.13/site-packages/webrtcvad.py
-sed -i '' "s/pkg_resources.get_distribution('webrtcvad').version/importlib.metadata.version('webrtcvad')/" \
-  .venv/lib/python3.13/site-packages/webrtcvad.py
-```
+**VAD cuts off too early / too late**
+Adjust `silenceSamples` and `speechThreshold` in `VAD.swift`. Increase `silenceSamples` for longer pause tolerance; lower `speechThreshold` to be more sensitive.
 
 ## License
 
