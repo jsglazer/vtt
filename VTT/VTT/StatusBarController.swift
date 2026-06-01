@@ -11,8 +11,8 @@ final class StatusBarController: NSObject {
     private weak var toggleItem: NSMenuItem?
 
     private enum Icon {
-        static let idle         = "mic"
-        static let recording    = "mic.fill"
+        static let idle         = "microphone.and.signal.meter"
+        static let recording    = "microphone.and.signal.meter.fill"
         static let transcribing = "ellipsis.bubble"
     }
 
