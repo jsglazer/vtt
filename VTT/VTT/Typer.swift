@@ -1,5 +1,5 @@
 import AppKit
-import CoreGraphics
+import ApplicationServices
 
 enum Typer {
     private static let punctuationStart = CharacterSet(charactersIn: ".,!?;:)]}\"'")
@@ -11,32 +11,60 @@ enum Typer {
         }
         guard !output.isEmpty else { return }
 
-        // NSPasteboard and CGEvent posting must run on the main thread
         DispatchQueue.main.async {
-            let pasteboard = NSPasteboard.general
-            let saved = pasteboard.string(forType: .string)
+            let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName ?? "unknown"
+            print("VTT: inserting into \(frontApp): \"\(output)\"")
 
-            pasteboard.clearContents()
-            pasteboard.setString(output, forType: .string)
+            if insertViaAX(output) { return }
+            pasteViaClipboard(output)
+        }
+    }
 
-            // Brief delay to let the pasteboard commit before sending ⌘V
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let source = CGEventSource(stateID: .combinedSessionState)
-                if let down = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
-                   let up   = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) {
-                    down.flags = .maskCommand
-                    up.flags   = .maskCommand
-                    down.post(tap: .cgSessionEventTap)
-                    up.post(tap: .cgSessionEventTap)
-                }
-                print("VTT: pasted → \"\(output)\"")
+    // Inserts text directly at the focused UI element via Accessibility API.
+    // Works in any app that supports AX (TextEdit, Safari, Notes, VS Code, etc.).
+    private static func insertViaAX(_ text: String) -> Bool {
+        let sys = AXUIElementCreateSystemWide()
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(sys, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let element = focused else {
+            print("VTT: AX — no focused element")
+            return false
+        }
+        let result = AXUIElementSetAttributeValue(
+            element as! AXUIElement,
+            kAXSelectedTextAttribute as CFString,
+            text as CFTypeRef
+        )
+        if result == .success {
+            print("VTT: AX insert OK")
+            return true
+        }
+        print("VTT: AX insert failed (error \(result.rawValue)), trying clipboard")
+        return false
+    }
+
+    // Fallback: put text on clipboard and simulate ⌘V.
+    private static func pasteViaClipboard(_ text: String) {
+        let pb = NSPasteboard.general
+        let saved = pb.string(forType: .string)
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let src = CGEventSource(stateID: .combinedSessionState)
+            if let dn = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true),
+               let up = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false) {
+                dn.flags = .maskCommand
+                up.flags = .maskCommand
+                dn.post(tap: .cgSessionEventTap)
+                up.post(tap: .cgSessionEventTap)
             }
+            print("VTT: clipboard paste fired")
+        }
 
-            // Restore clipboard after paste lands
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                pasteboard.clearContents()
-                if let saved { pasteboard.setString(saved, forType: .string) }
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            pb.clearContents()
+            if let saved { pb.setString(saved, forType: .string) }
         }
     }
 }

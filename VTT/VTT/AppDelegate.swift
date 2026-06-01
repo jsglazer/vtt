@@ -1,4 +1,5 @@
 import Cocoa
+import ApplicationServices
 import os.log
 
 private let log = Logger(subsystem: "com.jsglazer.VTT", category: "app")
@@ -9,6 +10,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("applicationDidFinishLaunching")
         print("VTT: applicationDidFinishLaunching")
+
+        let trusted = AXIsProcessTrusted()
+        print("VTT: accessibility trusted = \(trusted)")
+        if !trusted {
+            let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            AXIsProcessTrustedWithOptions(opts as CFDictionary)
+        }
+
         controller = VTTController()
         Task { await controller?.loadModel() }
     }
