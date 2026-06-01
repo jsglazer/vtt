@@ -38,6 +38,9 @@ final class VTTController {
 
         // Hotkey → toggle (dispatched to main by HotkeyManager)
         hotkey.onToggle = { [weak self] in self?.toggle() }
+
+        // Menu bar Start/Stop button → toggle
+        statusBar.onToggle = { [weak self] in self?.toggle() }
     }
 
     private func toggle() {

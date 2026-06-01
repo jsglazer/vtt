@@ -1,28 +1,44 @@
 import Cocoa
+import os.log
 
-final class StatusBarController {
+private let log = Logger(subsystem: "com.jsglazer.VTT", category: "statusbar")
+
+final class StatusBarController: NSObject {
+    var onToggle: (() -> Void)?
+
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private weak var statusLabel: NSMenuItem?
+    private weak var toggleItem: NSMenuItem?
 
-    // SF Symbols used for each state
     private enum Icon {
         static let idle         = "mic"
-        static let recording    = "mic.fill"       // filled = active; tint green below
+        static let recording    = "mic.fill"
         static let transcribing = "ellipsis.bubble"
     }
 
-    init() {
+    override init() {
+        super.init()
+
         let menu = NSMenu()
+
+        let toggle = NSMenuItem(title: "Start Recording", action: #selector(handleToggle), keyEquivalent: "r")
+        toggle.target = self
+        self.toggleItem = toggle
+        menu.addItem(toggle)
+
+        menu.addItem(.separator())
 
         let label = NSMenuItem(title: "Status: Idle", action: nil, keyEquivalent: "")
         label.isEnabled = false
-        statusLabel = label
+        self.statusLabel = label
         menu.addItem(label)
 
         menu.addItem(.separator())
+
         let hint = NSMenuItem(title: "Hotkey: ⌘⇧Space", action: nil, keyEquivalent: "")
         hint.isEnabled = false
         menu.addItem(hint)
+
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(
@@ -34,30 +50,45 @@ final class StatusBarController {
         item.menu = menu
         item.isVisible = true
         setImage(Icon.idle, tint: nil)
+        log.info("status bar item initialised")
         print("VTT: status bar item initialised")
     }
+
+    // MARK: - State
 
     func setIdle() {
         dispatchPrecondition(condition: .onQueue(.main))
         setImage(Icon.idle, tint: nil)
-        statusLabel?.title = "Status: Idle"
+        statusLabel?.title  = "Status: Idle"
+        toggleItem?.title   = "Start Recording"
+        toggleItem?.isEnabled = true
     }
 
     func setRecording() {
         dispatchPrecondition(condition: .onQueue(.main))
         setImage(Icon.recording, tint: .systemGreen)
-        statusLabel?.title = "Status: Recording..."
+        statusLabel?.title  = "Status: Recording..."
+        toggleItem?.title   = "Stop Recording"
+        toggleItem?.isEnabled = true
     }
 
     func setTranscribing() {
         dispatchPrecondition(condition: .onQueue(.main))
         setImage(Icon.transcribing, tint: nil)
-        statusLabel?.title = "Status: Transcribing..."
+        statusLabel?.title  = "Status: Transcribing..."
+        toggleItem?.title   = "Stop Recording"
+        toggleItem?.isEnabled = false
+    }
+
+    // MARK: - Private
+
+    @objc private func handleToggle() {
+        onToggle?()
     }
 
     private func setImage(_ symbolName: String, tint: NSColor?) {
         guard let button = item.button else {
-            print("VTT: NSStatusItem button is nil")
+            log.error("NSStatusItem button is nil")
             return
         }
         var config = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
