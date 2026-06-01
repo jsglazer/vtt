@@ -2,7 +2,7 @@ import Foundation
 
 final class VAD {
     // RMS level that counts as speech
-    var speechThreshold: Float = 0.01
+    var speechThreshold: Float = 0.02
     // Minimum samples before a segment can close (~1 s at 16 kHz)
     var minSpeechSamples: Int = 16_000
     // Silence samples needed to close an utterance (~0.6 s at 16 kHz)

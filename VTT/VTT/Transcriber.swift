@@ -5,6 +5,7 @@ final class Transcriber {
     private var kit: WhisperKit?
     private(set) var isReady = false
     var onSegment: ((String) -> Void)?
+    var onTranscriptionDone: (() -> Void)?
 
     func load() async {
         do {
@@ -17,10 +18,29 @@ final class Transcriber {
         }
     }
 
+    // Whisper outputs these when it sees silence or noise instead of speech
+    private static let noiseTokens: Set<String> = [
+        "[BLANK_AUDIO]", "[blank_audio]",
+        "[NOISE]", "[noise]",
+        "[silence]", "(silence)",
+        "[Music]", "[music]",
+        "[Applause]", "[applause]",
+    ]
+
+    private static func clean(_ raw: String) -> String {
+        // Strip known noise tokens, then trim whitespace
+        var text = raw
+        for token in noiseTokens {
+            text = text.replacingOccurrences(of: token, with: "")
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Enqueues transcription on a background Task. Calls `onSegment` when text is ready.
     func transcribe(_ samples: [Float]) {
         guard isReady, let kit else { return }
         Task.detached(priority: .userInitiated) { [weak self] in
+            defer { self?.onTranscriptionDone?() }
             do {
                 let options = DecodingOptions(task: .transcribe, language: "en")
                 let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
@@ -28,8 +48,10 @@ final class Transcriber {
                     .map { $0.text }
                     .joined(separator: " ")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { return }
-                self?.onSegment?(text)
+                print("VTT: transcribed → \"\(text)\"")
+                let clean = Self.clean(text)
+                guard !clean.isEmpty else { return }
+                self?.onSegment?(clean)
             } catch {
                 print("VTT: transcription error — \(error)")
             }
