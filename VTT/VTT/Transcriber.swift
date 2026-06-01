@@ -9,7 +9,6 @@ final class Transcriber {
 
     func load() async {
         do {
-            // openai_whisper-small.en is the English-only small model — faster than multilingual
             kit = try await WhisperKit(model: "openai_whisper-small.en", verbose: false)
             isReady = true
             print("VTT: model ready")
@@ -30,9 +29,16 @@ final class Transcriber {
     // Strips both (parenthetical) and [bracket] Whisper annotation forms
     private static let annotationRegex = try? NSRegularExpression(pattern: "\\([^)]*\\)|\\[[^\\]]*\\]")
 
-    // Spoken phrase → inserted text. Matched case-insensitively anywhere in the utterance.
+    // Strips commas anywhere and terminal .?!;: (Whisper adds these automatically)
+    private static let autoPunctuationRegex = try? NSRegularExpression(pattern: ",|[.?!;:](?=\\s|$)")
+
+    // Spoken phrase → inserted text. Include common Whisper misrecognitions as aliases.
+    // Longer phrases first so a substring doesn't shadow a full match.
     private static let voiceCommands: [(phrase: String, replacement: String)] = [
-        ("end note here", "\n\n"),
+        ("end of note here", "\n\n"),
+        ("and of note here", "\n\n"),
+        ("and note here",    "\n\n"),
+        ("end note here",    "\n\n"),
     ]
 
     private static func clean(_ raw: String) -> String {
@@ -41,6 +47,10 @@ final class Transcriber {
             text = text.replacingOccurrences(of: token, with: "")
         }
         if let re = annotationRegex {
+            let range = NSRange(text.startIndex..., in: text)
+            text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        }
+        if let re = autoPunctuationRegex {
             let range = NSRange(text.startIndex..., in: text)
             text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
         }
@@ -55,7 +65,6 @@ final class Transcriber {
         return result
     }
 
-    /// Enqueues transcription on a background Task. Calls `onSegment` when text is ready.
     func transcribe(_ samples: [Float]) {
         guard isReady, let kit else { return }
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -69,7 +78,7 @@ final class Transcriber {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 print("VTT: transcribed → \"\(text)\"")
                 let processed = Self.applyCommands(Self.clean(text))
-                // Trim spaces only — newlines from voice commands must not be swallowed
+                // Use .whitespaces (not .whitespacesAndNewlines) so \n\n from commands survives
                 guard !processed.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                 self?.onSegment?(processed)
             } catch {
