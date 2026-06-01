@@ -9,11 +9,17 @@ enum Typer {
         return cs
     }()
 
+    // Set after each insertion so the next segment knows not to prepend a space
+    // when the cursor is at the start of a fresh line.
+    private static var lastEndedWithNewline = false
+
     static func type(_ text: String) {
         var output = text
-        if let first = text.unicodeScalars.first, !noLeadingSpace.contains(first) {
+        let firstIsControl = text.unicodeScalars.first.map { noLeadingSpace.contains($0) } ?? true
+        if !firstIsControl && !lastEndedWithNewline {
             output = " " + text
         }
+        lastEndedWithNewline = text.unicodeScalars.last.map { CharacterSet.newlines.contains($0) } ?? false
         guard !output.isEmpty else { return }
 
         DispatchQueue.main.async {

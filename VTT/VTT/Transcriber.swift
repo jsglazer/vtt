@@ -32,9 +32,7 @@ final class Transcriber {
 
     // Spoken phrase → inserted text. Matched case-insensitively anywhere in the utterance.
     private static let voiceCommands: [(phrase: String, replacement: String)] = [
-        ("new paragraph", "\n\n"),
-        ("new para",      "\n\n"),
-        ("new line",      "\n"),
+        ("end note here", "\n\n"),
     ]
 
     private static func clean(_ raw: String) -> String {
@@ -71,7 +69,8 @@ final class Transcriber {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 print("VTT: transcribed → \"\(text)\"")
                 let processed = Self.applyCommands(Self.clean(text))
-                guard !processed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                // Trim spaces only — newlines from voice commands must not be swallowed
+                guard !processed.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                 self?.onSegment?(processed)
             } catch {
                 print("VTT: transcription error — \(error)")
