@@ -1,14 +1,24 @@
 import Foundation
 
 final class VTTController {
-    private let statusBar = StatusBarController()
-    private let hotkey   = HotkeyManager()
-    private let audio    = AudioCapture()
-    private let vad      = VAD()
+    private let statusBar  = StatusBarController()
+    private let hotkey     = HotkeyManager()
+    private let audio      = AudioCapture()
+    private let vad        = VAD()
     private let transcriber = Transcriber()
+    private let settingsWC = SettingsWindowController()
     private var isRecording = false
 
-    init() { wire() }
+    init() {
+        applyStoredSettings()
+        wire()
+        // Re-apply whenever the user moves a slider
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.applyStoredSettings() }
+    }
 
     func loadModel() async {
         await transcriber.load()
@@ -36,11 +46,29 @@ final class VTTController {
             }
         }
 
+        // Always return to correct state after transcription finishes (even if text was empty)
+        transcriber.onTranscriptionDone = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if !self.isRecording { self.statusBar.setIdle() }
+            }
+        }
+
         // Hotkey → toggle (dispatched to main by HotkeyManager)
         hotkey.onToggle = { [weak self] in self?.toggle() }
 
         // Menu bar Start/Stop button → toggle
         statusBar.onToggle = { [weak self] in self?.toggle() }
+
+        // Menu bar Settings → open panel
+        statusBar.onSettings = { [weak self] in self?.settingsWC.show() }
+    }
+
+    private func applyStoredSettings() {
+        let ud = UserDefaults.standard
+        if let v = ud.object(forKey: "vtt.speechThreshold")   as? Double { vad.speechThreshold  = Float(v) }
+        if let v = ud.object(forKey: "vtt.silenceTimeout")    as? Double { vad.silenceSamples    = Int(v * 16_000) }
+        if let v = ud.object(forKey: "vtt.minSpeechDuration") as? Double { vad.minSpeechSamples  = Int(v * 16_000) }
     }
 
     private func toggle() {

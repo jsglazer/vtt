@@ -5,6 +5,7 @@ private let log = Logger(subsystem: "com.jsglazer.VTT", category: "statusbar")
 
 final class StatusBarController: NSObject {
     var onToggle: (() -> Void)?
+    var onSettings: (() -> Void)?
 
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private weak var statusLabel: NSMenuItem?
@@ -38,6 +39,12 @@ final class StatusBarController: NSObject {
         let hint = NSMenuItem(title: "Hotkey: ⌘⇧Space", action: nil, keyEquivalent: "")
         hint.isEnabled = false
         menu.addItem(hint)
+
+        menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(handleSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
 
@@ -82,9 +89,8 @@ final class StatusBarController: NSObject {
 
     // MARK: - Private
 
-    @objc private func handleToggle() {
-        onToggle?()
-    }
+    @objc private func handleToggle() { onToggle?() }
+    @objc private func handleSettings() { onSettings?() }
 
     private func setImage(_ symbolName: String, tint: NSColor?) {
         guard let button = item.button else {
