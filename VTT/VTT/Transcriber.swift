@@ -7,9 +7,17 @@ final class Transcriber {
     var onSegment: ((String) -> Void)?
     var onTranscriptionDone: (() -> Void)?
 
+    private static let modelName = "openai_whisper-medium.en"
+
     func load() async {
         do {
-            kit = try await WhisperKit(model: "openai_whisper-medium.en", verbose: false)
+            // WhisperKit downloads to ~/Documents/huggingface/models/openai/<model>/
+            // but doesn't pre-create the model folder; the move step fails if it's absent.
+            let modelDir = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Documents/huggingface/models/openai/\(Self.modelName)")
+            try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+
+            kit = try await WhisperKit(model: Self.modelName, verbose: false)
             isReady = true
             print("VTT: model ready")
         } catch {
