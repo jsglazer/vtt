@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0375551C2FCE298500688029 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 03700E932FCE25F000AC2CFB /* WhisperKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		03700E4F2FCE24EC00AC2CFB /* VTT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VTT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0375551C2FCE298500688029 /* WhisperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,14 +331,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		03700E932FCE25F000AC2CFB /* WhisperKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */;
-			productName = WhisperKit;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -344,6 +341,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		03700E932FCE25F000AC2CFB /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03700E922FCE25F000AC2CFB /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 03700E472FCE24EC00AC2CFB /* Project object */;
 }
