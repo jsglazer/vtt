@@ -32,3 +32,27 @@ Date: 2026-06-01
 
 ## Build Output
 
+### Files created
+| File | Purpose |
+|---|---|
+| `vtt.py` | Entry point, wires all components, runs rumps main loop |
+| `audio.py` | sounddevice 16kHz/mono capture, 480-sample frames, queue-based |
+| `vad.py` | webrtcvad ring-buffer state machine (75% voiced→start, 75% silent→end) |
+| `transcriber.py` | faster-whisper worker thread, `small/int8/en`, segments via callback |
+| `typer.py` | pynput keyboard injection at active cursor |
+| `hotkey.py` | pynput GlobalHotKeys, ⌘⇧Space toggle |
+| `menubar.py` | rumps app, thread-safe icon via @rumps.timer(0.1) |
+| `requirements.txt` | All dependencies pinned with minimums |
+
+### Dependency fix
+- `webrtcvad 2.0.10` uses `pkg_resources` (removed from Python 3.13 venvs)
+- Patched `.venv/lib/python3.13/site-packages/webrtcvad.py` to use `importlib.metadata` instead
+
+### Status
+- ✅ All imports verified clean
+- ✅ Committed and pushed to github.com/jsglazer/vtt
+
+### First run notes
+- faster-whisper downloads `small` model (~500MB) to `~/.cache/huggingface/hub/` on first transcription
+- macOS will prompt for **Microphone** and **Accessibility** permissions on first run
+- Accessibility permission required for both global hotkey detection and keyboard injection
