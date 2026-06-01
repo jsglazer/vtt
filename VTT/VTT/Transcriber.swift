@@ -27,11 +27,17 @@ final class Transcriber {
         "[Applause]", "[applause]",
     ]
 
+    private static let soundEffectRegex = try? NSRegularExpression(pattern: "\\([^)]*\\)")
+
     private static func clean(_ raw: String) -> String {
-        // Strip known noise tokens, then trim whitespace
         var text = raw
         for token in noiseTokens {
             text = text.replacingOccurrences(of: token, with: "")
+        }
+        // Strip Whisper sound-effect annotations: (sniffles), (keyboard clacking), etc.
+        if let re = soundEffectRegex {
+            let range = NSRange(text.startIndex..., in: text)
+            text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
         }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
