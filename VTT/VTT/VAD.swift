@@ -1,29 +1,37 @@
 import Foundation
 
 final class VAD {
-    // RMS level that counts as speech
     var speechThreshold: Float = 0.02
     // Minimum samples before a segment can close (~1 s at 16 kHz)
     var minSpeechSamples: Int = 16_000
     // Silence samples needed to close an utterance (~0.6 s at 16 kHz)
     var silenceSamples: Int = 9_600
+    // Pre-roll: audio captured before RMS crosses the threshold (~0.5 s at 16 kHz).
+    // Prevents the first syllable of each utterance from being clipped.
+    private let prerollCapacity = 8_000
 
     var onUtterance: (([Float]) -> Void)?
 
     private enum State { case silent, speaking }
     private var state: State = .silent
     private var buffer: [Float] = []
+    private var preroll: [Float] = []
     private var silenceCount = 0
 
-    /// Feed a chunk of 16 kHz mono audio. Calls `onUtterance` when speech ends.
     func process(_ samples: [Float]) {
         let voiced = rms(samples) >= speechThreshold
 
         switch state {
         case .silent:
+            // Maintain a rolling window of recent audio so the onset of speech isn't lost
+            preroll.append(contentsOf: samples)
+            if preroll.count > prerollCapacity {
+                preroll.removeFirst(preroll.count - prerollCapacity)
+            }
             if voiced {
                 state = .speaking
-                buffer = samples
+                buffer = preroll + samples
+                preroll = []
                 silenceCount = 0
             }
         case .speaking:
@@ -39,8 +47,6 @@ final class VAD {
         }
     }
 
-    /// Emit any buffered speech immediately (called on recording stop).
-    /// Returns true if audio was emitted.
     @discardableResult
     func flush() -> Bool {
         guard state == .speaking, buffer.count >= minSpeechSamples else {
@@ -58,6 +64,7 @@ final class VAD {
 
     private func reset() {
         buffer = []
+        preroll = []
         silenceCount = 0
         state = .silent
     }
