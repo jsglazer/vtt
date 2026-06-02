@@ -4,6 +4,8 @@ struct SettingsView: View {
     @AppStorage("vtt.speechThreshold")   private var threshold: Double = 0.02
     @AppStorage("vtt.silenceTimeout")    private var silenceTimeout: Double = 0.4
     @AppStorage("vtt.minSpeechDuration") private var minSpeechDuration: Double = 0.5
+    @AppStorage("vtt.autoNewLine")       private var autoNewLine: Bool = false
+    @AppStorage("vtt.autoNewLineDelay")  private var autoNewLineDelay: Double = 2.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -37,12 +39,32 @@ struct SettingsView: View {
 
             Divider()
 
+            Toggle("Auto New Line", isOn: $autoNewLine)
+            Text("Automatically insert a blank line after a period of silence")
+                .font(.caption).foregroundColor(.secondary)
+
+            if autoNewLine {
+                SliderRow(
+                    title: "Auto New Line Delay",
+                    valueLabel: String(format: "%.1f s", autoNewLineDelay),
+                    minLabel: "1.0 s",
+                    maxLabel: "5.0 s",
+                    description: "Insert \\n\\n after this much silence while recording",
+                    value: $autoNewLineDelay,
+                    range: 1.0...5.0
+                )
+            }
+
+            Divider()
+
             HStack {
                 Spacer()
                 Button("Restore Defaults") {
                     threshold = 0.02
                     silenceTimeout = 0.4
                     minSpeechDuration = 0.5
+                    autoNewLine = false
+                    autoNewLineDelay = 2.0
                 }
             }
         }

@@ -8,6 +8,7 @@ final class VTTController {
     private let transcriber = Transcriber()
     private let settingsWC = SettingsWindowController()
     private var isRecording = false
+    private var autoNewLineTimer: Timer?
 
     init() {
         applyStoredSettings()
@@ -32,7 +33,10 @@ final class VTTController {
 
         // VAD → Transcriber (called on AVAudioEngine thread)
         vad.onUtterance = { [weak self] samples in
-            DispatchQueue.main.async { self?.statusBar.setTranscribing() }
+            DispatchQueue.main.async {
+                self?.cancelAutoNewLineTimer()
+                self?.statusBar.setTranscribing()
+            }
             self?.transcriber.transcribe(samples)
         }
 
@@ -50,7 +54,11 @@ final class VTTController {
         transcriber.onTranscriptionDone = { [weak self] in
             DispatchQueue.main.async {
                 guard let self else { return }
-                if !self.isRecording { self.statusBar.setIdle() }
+                if self.isRecording {
+                    self.scheduleAutoNewLineTimer()
+                } else {
+                    self.statusBar.setIdle()
+                }
             }
         }
 
@@ -93,10 +101,27 @@ final class VTTController {
 
     private func stopRecording() {
         isRecording = false
+        cancelAutoNewLineTimer()
         audio.stop()
         let flushed = vad.flush()
         if !flushed { statusBar.setIdle() }
         // If flushed, the transcriber callback will call setIdle() after typing
+    }
+
+    private func scheduleAutoNewLineTimer() {
+        cancelAutoNewLineTimer()
+        guard UserDefaults.standard.bool(forKey: "vtt.autoNewLine") else { return }
+        let delay = UserDefaults.standard.double(forKey: "vtt.autoNewLineDelay")
+        let d = delay > 0 ? delay : 2.0
+        autoNewLineTimer = Timer.scheduledTimer(withTimeInterval: d, repeats: false) { [weak self] _ in
+            Typer.type("\n\n")
+            self?.autoNewLineTimer = nil
+        }
+    }
+
+    private func cancelAutoNewLineTimer() {
+        autoNewLineTimer?.invalidate()
+        autoNewLineTimer = nil
     }
 
     func shutdown() {

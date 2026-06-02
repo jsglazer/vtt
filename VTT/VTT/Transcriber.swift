@@ -40,6 +40,38 @@ final class Transcriber {
     // Strips commas anywhere and terminal .?!;: (Whisper adds these automatically)
     private static let autoPunctuationRegex = try? NSRegularExpression(pattern: ",|[.?!;:](?=\\s|$)")
 
+    // Spoken punctuation: ordered longest-phrase-first to avoid partial matches
+    private static let spokenPunctuation: [(regex: NSRegularExpression, replacement: String)] = {
+        let pairs: [(String, String)] = [
+            ("question mark",     "?"),
+            ("exclamation mark",  "!"),
+            ("exclamation point", "!"),
+            ("open parenthesis",  "("),
+            ("close parenthesis", ")"),
+            ("open paren",        "("),
+            ("close paren",       ")"),
+            ("new paragraph",     "\n\n"),
+            ("new line",          "\n"),
+            ("full stop",         "."),
+            ("dot dot dot",       "…"),
+            ("ellipsis",          "…"),
+            ("semicolon",         ";"),
+            ("colon",             ":"),
+            ("hyphen",            "-"),
+            ("period",            "."),
+            ("comma",             ","),
+            ("dash",              " — "),
+        ]
+        return pairs.compactMap { word, replacement in
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b"
+            guard let re = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
+            return (re, replacement)
+        }
+    }()
+
+    // Removes the space that spoken-punct replacement leaves before attached symbols
+    private static let spaceBeforePunctRegex = try? NSRegularExpression(pattern: "\\s+([.?!,;:])")
+
     private static func clean(_ raw: String) -> String {
         var text = raw
         for token in noiseTokens {
@@ -52,6 +84,14 @@ final class Transcriber {
         if let re = autoPunctuationRegex {
             let range = NSRange(text.startIndex..., in: text)
             text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        }
+        for (re, replacement) in spokenPunctuation {
+            let range = NSRange(text.startIndex..., in: text)
+            text = re.stringByReplacingMatches(in: text, range: range, withTemplate: replacement)
+        }
+        if let re = spaceBeforePunctRegex {
+            let range = NSRange(text.startIndex..., in: text)
+            text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "$1")
         }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
