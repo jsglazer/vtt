@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("vtt.minSpeechDuration") private var minSpeechDuration: Double = 0.5
     @AppStorage("vtt.autoNewLine")       private var autoNewLine: Bool = false
     @AppStorage("vtt.autoNewLineDelay")  private var autoNewLineDelay: Double = 2.0
+    @AppStorage("vtt.showWaveform")      private var showWaveform: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -57,6 +58,12 @@ struct SettingsView: View {
 
             Divider()
 
+            Toggle("Show Waveform", isOn: $showWaveform)
+            Text("Animated audio bars to the left of the menu bar icon while recording")
+                .font(.caption).foregroundColor(.secondary)
+
+            Divider()
+
             HStack {
                 Spacer()
                 Button("Restore Defaults") {
@@ -65,6 +72,7 @@ struct SettingsView: View {
                     minSpeechDuration = 0.5
                     autoNewLine = false
                     autoNewLineDelay = 2.0
+                    showWaveform = true
                 }
             }
         }

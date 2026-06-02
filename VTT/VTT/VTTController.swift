@@ -27,6 +27,11 @@ final class VTTController {
     }
 
     private func wire() {
+        // Audio level → waveform (dispatched to main by AudioCapture)
+        audio.onLevel = { [weak self] rms in
+            self?.statusBar.updateLevel(rms)
+        }
+
         // Audio → VAD (called on AVAudioEngine thread)
         audio.onSamples = { [weak self] samples in
             self?.vad.process(samples)

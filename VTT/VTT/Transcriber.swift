@@ -91,7 +91,21 @@ final class Transcriber {
             let range = NSRange(text.startIndex..., in: text)
             text = re.stringByReplacingMatches(in: text, range: range, withTemplate: "$1")
         }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = collapseRepetitions(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        return text
+    }
+
+    // Collapses exact whole-string repetitions produced by Whisper hallucination
+    // (e.g. "word word word word" → "word word").
+    private static func collapseRepetitions(_ text: String) -> String {
+        let words = text.split(separator: " ").map(String.init)
+        guard words.count >= 4 else { return text }
+        let mid = words.count / 2
+        guard words.count == mid * 2 else { return text }
+        if Array(words[0..<mid]) == Array(words[mid...]) {
+            return words[0..<mid].joined(separator: " ")
+        }
+        return text
     }
 
     func transcribe(_ samples: [Float]) {

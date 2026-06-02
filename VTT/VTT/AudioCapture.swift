@@ -2,6 +2,7 @@ import AVFoundation
 
 final class AudioCapture {
     var onSamples: (([Float]) -> Void)?
+    var onLevel: ((Float) -> Void)?
 
     private let engine = AVAudioEngine()
     private let processingQueue = DispatchQueue(label: "com.jsglazer.VTT.audio-processing", qos: .userInitiated)
@@ -13,6 +14,9 @@ final class AudioCapture {
         interleaved: false
     )!
 
+    // Larger buffer → fewer callbacks/sec → more CPU headroom during Whisper
+    private let tapBufferSize: AVAudioFrameCount = 8_192
+
     func start() throws {
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
@@ -23,10 +27,10 @@ final class AudioCapture {
         converter = conv
 
         let outputCapacity = AVAudioFrameCount(
-            ceil(4096.0 * targetFormat.sampleRate / inputFormat.sampleRate)
+            ceil(Double(tapBufferSize) * targetFormat.sampleRate / inputFormat.sampleRate)
         ) + 1
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+        input.installTap(onBus: 0, bufferSize: tapBufferSize, format: inputFormat) { [weak self] buffer, _ in
             self?.convert(buffer, capacity: outputCapacity)
         }
 
@@ -57,9 +61,14 @@ final class AudioCapture {
         else { return }
 
         let samples = Array(UnsafeBufferPointer(start: data, count: Int(out.frameLength)))
-        processingQueue.async { [weak self] in
-            self?.onSamples?(samples)
-        }
+        let rms = Self.rms(samples)
+        DispatchQueue.main.async { [weak self] in self?.onLevel?(rms) }
+        processingQueue.async { [weak self] in self?.onSamples?(samples) }
+    }
+
+    private static func rms(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        return sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count))
     }
 }
 
