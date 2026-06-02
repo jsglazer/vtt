@@ -7,7 +7,7 @@ final class Transcriber {
     var onSegment: ((String) -> Void)?
     var onTranscriptionDone: (() -> Void)?
 
-    private static let modelName = "openai_whisper-large-v2"
+    private static let modelName = "openai_whisper-small.en"
 
     func load() async {
         do {
