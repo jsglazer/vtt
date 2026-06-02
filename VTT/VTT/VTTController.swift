@@ -9,6 +9,7 @@ final class VTTController {
     private let settingsWC = SettingsWindowController()
     private var isRecording = false
     private var autoNewLineTimer: Timer?
+    private var lastSegmentText = ""
 
     init() {
         applyStoredSettings()
@@ -35,6 +36,7 @@ final class VTTController {
         vad.onUtterance = { [weak self] samples in
             DispatchQueue.main.async {
                 self?.cancelAutoNewLineTimer()
+                self?.lastSegmentText = ""   // reset so noise can't re-trigger from old text
                 self?.statusBar.setTranscribing()
             }
             self?.transcriber.transcribe(samples)
@@ -42,6 +44,7 @@ final class VTTController {
 
         // Transcriber → Typer (called on background Task)
         transcriber.onSegment = { [weak self] text in
+            DispatchQueue.main.async { self?.lastSegmentText = text }
             Typer.type(text)
             DispatchQueue.main.async {
                 self?.isRecording == true
@@ -111,11 +114,17 @@ final class VTTController {
     private func scheduleAutoNewLineTimer() {
         cancelAutoNewLineTimer()
         guard UserDefaults.standard.bool(forKey: "vtt.autoNewLine") else { return }
+        guard lastSegmentText.count > 10 else { return }   // ignore noise / blank transcriptions
         let delay = UserDefaults.standard.double(forKey: "vtt.autoNewLineDelay")
         let d = delay > 0 ? delay : 2.0
         autoNewLineTimer = Timer.scheduledTimer(withTimeInterval: d, repeats: false) { [weak self] _ in
-            Typer.type("\n\n")
-            self?.autoNewLineTimer = nil
+            guard let self else { return }
+            let sentenceEnders = CharacterSet(charactersIn: ".?!…")
+            let needsPeriod = self.lastSegmentText.unicodeScalars.last
+                .map { !sentenceEnders.contains($0) } ?? false
+            Typer.type(needsPeriod ? ".\n\n" : "\n\n")
+            self.lastSegmentText = ""
+            self.autoNewLineTimer = nil
         }
     }
 

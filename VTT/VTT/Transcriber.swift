@@ -51,7 +51,6 @@ final class Transcriber {
             ("open paren",        "("),
             ("close paren",       ")"),
             ("new paragraph",     "\n\n"),
-            ("new line",          "\n"),
             ("full stop",         "."),
             ("dot dot dot",       "…"),
             ("ellipsis",          "…"),
