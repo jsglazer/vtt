@@ -27,7 +27,7 @@ enum Typer {
             print("VTT: inserting into \(frontApp): \"\(output)\"")
 
             if !insertViaAX(output) {
-                print("VTT: text dropped — AX insertion unavailable in this app")
+                pasteViaClipboard(output)
             }
         }
     }
@@ -80,7 +80,34 @@ enum Typer {
             print("VTT: AX insert OK")
             return true
         }
-        print("VTT: AX insert failed (error \(result.rawValue))")
+        print("VTT: AX insert failed (error \(result.rawValue)), falling back to clipboard")
         return false
+    }
+
+    // Fallback for apps that don't implement writable AX text attributes
+    // (e.g. Sublime Text, VS Code, Vim GUIs — any app with a custom text engine).
+    // Saves and restores the clipboard so nothing is lost.
+    private static func pasteViaClipboard(_ text: String) {
+        let pb = NSPasteboard.general
+        let saved = pb.string(forType: .string)
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let src = CGEventSource(stateID: .combinedSessionState)
+            if let dn = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true),
+               let up = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false) {
+                dn.flags = .maskCommand
+                up.flags = .maskCommand
+                dn.post(tap: .cgSessionEventTap)
+                up.post(tap: .cgSessionEventTap)
+            }
+            print("VTT: clipboard paste fired")
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            pb.clearContents()
+            if let saved { pb.setString(saved, forType: .string) }
+        }
     }
 }
