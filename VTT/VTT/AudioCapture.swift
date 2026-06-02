@@ -4,6 +4,7 @@ final class AudioCapture {
     var onSamples: (([Float]) -> Void)?
 
     private let engine = AVAudioEngine()
+    private let processingQueue = DispatchQueue(label: "com.jsglazer.VTT.audio-processing", qos: .userInitiated)
     private var converter: AVAudioConverter?
     private let targetFormat = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
@@ -56,7 +57,9 @@ final class AudioCapture {
         else { return }
 
         let samples = Array(UnsafeBufferPointer(start: data, count: Int(out.frameLength)))
-        onSamples?(samples)
+        processingQueue.async { [weak self] in
+            self?.onSamples?(samples)
+        }
     }
 }
 

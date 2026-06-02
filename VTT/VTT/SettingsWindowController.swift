@@ -19,7 +19,6 @@ final class SettingsWindowController {
             (w as? NSPanel)?.hidesOnDeactivate = false
             window = w
         }
-        window?.setContentSize(window?.contentViewController?.view.fittingSize ?? NSSize(width: 400, height: 300))
         window?.center()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
