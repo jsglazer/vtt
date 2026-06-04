@@ -125,6 +125,16 @@ final class StatusBarController: NSObject {
         rebuildIcon()
     }
 
+    func setLoading(_ message: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        appState = .idle
+        stopWaveformTimer()
+        statusLabel?.title  = message
+        toggleItem?.title   = "Start Recording"
+        toggleItem?.isEnabled = false
+        rebuildIcon()
+    }
+
     func setRecording() {
         dispatchPrecondition(condition: .onQueue(.main))
         appState = .recording

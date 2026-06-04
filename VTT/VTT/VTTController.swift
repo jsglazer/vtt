@@ -30,6 +30,16 @@ final class VTTController {
     }
 
     private func wire() {
+        // Model load progress → status label (already dispatched to main by Transcriber)
+        transcriber.onProgress = { [weak self] fraction, label in
+            guard let self else { return }
+            if fraction >= 1.0 {
+                self.statusBar.setIdle()
+            } else {
+                self.statusBar.setLoading(label)
+            }
+        }
+
         // Audio level → waveform (dispatched to main by AudioCapture)
         audio.onLevel = { [weak self] rms in
             self?.statusBar.updateLevel(rms)

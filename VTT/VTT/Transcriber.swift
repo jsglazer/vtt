@@ -6,25 +6,58 @@ final class Transcriber {
     private(set) var isReady = false
     var onSegment: ((String) -> Void)?
     var onTranscriptionDone: (() -> Void)?
+    /// Called on the main thread with (fractionCompleted 0–1, status label).
+    var onProgress: ((Double, String) -> Void)?
 
     private static let modelName = "openai_whisper-large-v2"
     static let displayName = "Whisper large-v2"
 
+    // WhisperKit caches models under ~/Documents/huggingface/models/argmaxinc/whisperkit-coreml/
+    private static var modelCacheURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/huggingface/models/argmaxinc/whisperkit-coreml/\(modelName)")
+    }
+
+    private static func isModelCached() -> Bool {
+        FileManager.default.fileExists(atPath: modelCacheURL.appendingPathComponent("config.json").path)
+    }
+
     func load() async {
         do {
-            // WhisperKit downloads to ~/Documents/huggingface/models/openai/<model>/
-            // but doesn't pre-create the model folder; the move step fails if it's absent.
-            let modelDir = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Documents/huggingface/models/openai/\(Self.modelName)")
-            try? FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+            let modelFolder: URL
+            if Self.isModelCached() {
+                notifyProgress(0.0, "Loading model…")
+                modelFolder = Self.modelCacheURL
+            } else {
+                notifyProgress(0.0, "Downloading model…")
+                modelFolder = try await WhisperKit.download(
+                    variant: Self.modelName,
+                    progressCallback: { [weak self] progress in
+                        let frac = progress.fractionCompleted
+                        let label = frac < 0.01
+                            ? "Downloading model…"
+                            : String(format: "Downloading %.0f%%…", frac * 100)
+                        self?.notifyProgress(frac * 0.9, label)
+                    }
+                )
+            }
 
-            kit = try await WhisperKit(model: Self.modelName, verbose: false)
+            notifyProgress(0.9, "Loading model…")
+            kit = try await WhisperKit(modelFolder: modelFolder.path, verbose: false, download: false)
             isReady = true
             print("VTT: model ready")
+            notifyProgress(1.0, "Ready")
         } catch {
             print("VTT: model load failed — \(error)")
         }
     }
+
+    private func notifyProgress(_ fraction: Double, _ label: String) {
+        let cb = onProgress
+        DispatchQueue.main.async { cb?(fraction, label) }
+    }
+
+    // MARK: - Noise / hallucination filtering
 
     // Whisper outputs these when it sees silence or noise instead of speech
     private static let noiseTokens: Set<String> = [
@@ -97,7 +130,6 @@ final class Transcriber {
     }
 
     // Collapses exact whole-string repetitions produced by Whisper hallucination
-    // (e.g. "word word word word" → "word word").
     private static func collapseRepetitions(_ text: String) -> String {
         let words = text.split(separator: " ").map(String.init)
         guard words.count >= 4 else { return text }
@@ -117,8 +149,8 @@ final class Transcriber {
                 let options = DecodingOptions(
                     task: .transcribe,
                     language: "en",
-                    sampleLength: 128,       // cap at ~100 words per segment; skips excess decoder steps
-                    withoutTimestamps: true  // skip timestamp alignment — not needed for typing
+                    sampleLength: 128,
+                    withoutTimestamps: true
                 )
                 let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
                 let text = results
