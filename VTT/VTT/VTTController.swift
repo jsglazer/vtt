@@ -70,10 +70,13 @@ final class VTTController {
             DispatchQueue.main.async {
                 guard let self else { return }
                 if self.isRecording {
-                    self.scheduleAutoNewLineTimer()
+                    self.statusBar.setRecording()
                 } else {
                     self.statusBar.setIdle()
                 }
+                // Schedule auto-newline regardless of recording state so it fires
+                // after the final phrase when the user stops recording
+                self.scheduleAutoNewLineTimer()
             }
         }
 

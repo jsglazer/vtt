@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("vtt.speechThreshold")   private var threshold: Double = 0.02
-    @AppStorage("vtt.silenceTimeout")    private var silenceTimeout: Double = 0.4
+    @AppStorage("vtt.silenceTimeout")    private var silenceTimeout: Double = 0.5
     @AppStorage("vtt.minSpeechDuration") private var minSpeechDuration: Double = 0.5
     @AppStorage("vtt.autoNewLine")       private var autoNewLine: Bool = false
     @AppStorage("vtt.autoNewLineDelay")  private var autoNewLineDelay: Double = 2.0
@@ -21,21 +21,23 @@ struct SettingsView: View {
             )
             SliderRow(
                 title: "Silence Timeout",
-                valueLabel: String(format: "%.2f s", silenceTimeout),
-                minLabel: "0.2 s",
-                maxLabel: "1.2 s",
+                valueLabel: stepLabel(silenceTimeout),
+                minLabel: "0 s",
+                maxLabel: "5 s",
                 description: "Wait after you stop speaking before transcribing",
                 value: $silenceTimeout,
-                range: 0.2...1.2
+                range: 0...5,
+                step: 0.25
             )
             SliderRow(
                 title: "Min Speech Duration",
-                valueLabel: String(format: "%.2f s", minSpeechDuration),
-                minLabel: "0.25 s",
-                maxLabel: "1.5 s",
+                valueLabel: stepLabel(minSpeechDuration),
+                minLabel: "0 s",
+                maxLabel: "5 s",
                 description: "Ignore utterances shorter than this",
                 value: $minSpeechDuration,
-                range: 0.25...1.5
+                range: 0...5,
+                step: 0.25
             )
 
             Divider()
@@ -68,7 +70,7 @@ struct SettingsView: View {
                 Spacer()
                 Button("Restore Defaults") {
                     threshold = 0.02
-                    silenceTimeout = 0.4
+                    silenceTimeout = 0.5
                     minSpeechDuration = 0.5
                     autoNewLine = false
                     autoNewLineDelay = 2.0
@@ -81,6 +83,11 @@ struct SettingsView: View {
     }
 }
 
+// Formats a stepped time value: whole seconds as "1 s", fractional as "0.25 s"
+private func stepLabel(_ v: Double) -> String {
+    v == v.rounded() ? "\(Int(v)) s" : String(format: "%.2g s", v)
+}
+
 private struct SliderRow: View {
     let title: String
     let valueLabel: String
@@ -89,6 +96,7 @@ private struct SliderRow: View {
     let description: String
     @Binding var value: Double
     let range: ClosedRange<Double>
+    var step: Double? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -101,7 +109,11 @@ private struct SliderRow: View {
             }
             HStack(spacing: 8) {
                 Text(minLabel).font(.caption).foregroundColor(.secondary)
-                Slider(value: $value, in: range)
+                if let step {
+                    Slider(value: $value, in: range, step: step)
+                } else {
+                    Slider(value: $value, in: range)
+                }
                 Text(maxLabel).font(.caption).foregroundColor(.secondary)
             }
             Text(description).font(.caption).foregroundColor(.secondary)
