@@ -24,6 +24,9 @@ final class VTTController {
 
     func loadModel() async {
         await transcriber.load()
+        await MainActor.run {
+            statusBar.setModelName(Transcriber.displayName)
+        }
     }
 
     private func wire() {
@@ -41,8 +44,12 @@ final class VTTController {
         vad.onUtterance = { [weak self] samples in
             DispatchQueue.main.async {
                 self?.cancelAutoNewLineTimer()
-                self?.lastSegmentText = ""   // reset so noise can't re-trigger from old text
-                self?.statusBar.setTranscribing()
+                self?.lastSegmentText = ""
+                // Only show transcribing icon after recording stops; during active recording
+                // keep the waveform icon to avoid it flashing on every segment
+                if self?.isRecording == false {
+                    self?.statusBar.setTranscribing()
+                }
             }
             self?.transcriber.transcribe(samples)
         }

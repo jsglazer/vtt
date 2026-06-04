@@ -23,11 +23,13 @@ enum Typer {
             lastEndedWithNewline = text.unicodeScalars.last.map { CharacterSet.newlines.contains($0) } ?? false
             guard !output.isEmpty else { return }
 
-            let frontApp = NSWorkspace.shared.frontmostApplication?.localizedName ?? "unknown"
-            print("VTT: inserting into \(frontApp): \"\(output)\"")
+            let frontApp = NSWorkspace.shared.frontmostApplication
+            let frontName = frontApp?.localizedName ?? "unknown"
+            let frontPid  = frontApp?.processIdentifier ?? 0
+            print("VTT: inserting into \(frontName): \"\(output)\"")
 
             if !insertViaAX(output) {
-                pasteViaClipboard(output)
+                pasteViaClipboard(output, targetPid: frontPid)
             }
         }
     }
@@ -87,7 +89,8 @@ enum Typer {
     // Fallback for apps that don't implement writable AX text attributes
     // (e.g. Sublime Text, VS Code, Vim GUIs — any app with a custom text engine).
     // Saves and restores the clipboard so nothing is lost.
-    private static func pasteViaClipboard(_ text: String) {
+    // Targets the app by PID so the event reaches the right window even if focus shifts.
+    private static func pasteViaClipboard(_ text: String, targetPid: pid_t) {
         let pb = NSPasteboard.general
         let saved = pb.string(forType: .string)
         pb.clearContents()
@@ -99,10 +102,10 @@ enum Typer {
                let up = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false) {
                 dn.flags = .maskCommand
                 up.flags = .maskCommand
-                dn.post(tap: .cgSessionEventTap)
-                up.post(tap: .cgSessionEventTap)
+                dn.postToPid(targetPid)
+                up.postToPid(targetPid)
             }
-            print("VTT: clipboard paste fired")
+            print("VTT: clipboard paste fired to pid \(targetPid)")
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {

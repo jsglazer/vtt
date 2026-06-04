@@ -10,6 +10,7 @@ final class StatusBarController: NSObject {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private weak var statusLabel: NSMenuItem?
     private weak var toggleItem: NSMenuItem?
+    private weak var modelLabel: NSMenuItem?
 
     private enum AppState { case idle, recording, transcribing }
     private var appState: AppState = .idle
@@ -67,6 +68,11 @@ final class StatusBarController: NSObject {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(handleSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        let modelItem = NSMenuItem(title: "Model: —", action: nil, keyEquivalent: "")
+        modelItem.isEnabled = false
+        self.modelLabel = modelItem
+        menu.addItem(modelItem)
 
         menu.addItem(.separator())
 
@@ -211,6 +217,11 @@ final class StatusBarController: NSObject {
                                     width: symW, height: symH))
             return true
         }
+    }
+
+    func setModelName(_ name: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        modelLabel?.title = "Model: \(name)"
     }
 
     // MARK: - Actions
