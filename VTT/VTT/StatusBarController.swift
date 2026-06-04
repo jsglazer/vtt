@@ -1,4 +1,5 @@
 import Cocoa
+import ApplicationServices
 import os.log
 
 private let log = Logger(subsystem: "com.jsglazer.VTT", category: "statusbar")
@@ -11,6 +12,7 @@ final class StatusBarController: NSObject {
     private weak var statusLabel: NSMenuItem?
     private weak var toggleItem: NSMenuItem?
     private weak var modelLabel: NSMenuItem?
+    private weak var axWarningItem: NSMenuItem?
 
     private enum AppState { case idle, recording, transcribing }
     private var appState: AppState = .idle
@@ -45,6 +47,15 @@ final class StatusBarController: NSObject {
 
         let menu = NSMenu()
 
+        // Accessibility warning — shown only when permission is not granted
+        if !AXIsProcessTrusted() {
+            let warn = NSMenuItem(title: "⚠️ No Accessibility Permission", action: #selector(handleFixAccessibility), keyEquivalent: "")
+            warn.target = self
+            self.axWarningItem = warn
+            menu.addItem(warn)
+            menu.addItem(.separator())
+        }
+
         let toggle = NSMenuItem(title: "Start Recording", action: #selector(handleToggle), keyEquivalent: "r")
         toggle.target = self
         self.toggleItem = toggle
@@ -73,6 +84,11 @@ final class StatusBarController: NSObject {
         modelItem.isEnabled = false
         self.modelLabel = modelItem
         menu.addItem(modelItem)
+
+        let versionStr = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let versionItem = NSMenuItem(title: "Version \(versionStr)", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
 
         menu.addItem(.separator())
 
@@ -228,4 +244,9 @@ final class StatusBarController: NSObject {
 
     @objc private func handleToggle() { onToggle?() }
     @objc private func handleSettings() { onSettings?() }
+
+    @objc private func handleFixAccessibility() {
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        AXIsProcessTrustedWithOptions(opts as CFDictionary)
+    }
 }
