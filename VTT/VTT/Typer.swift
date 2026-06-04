@@ -89,26 +89,30 @@ enum Typer {
     // Fallback for apps that don't implement writable AX text attributes
     // (e.g. Sublime Text, VS Code, Vim GUIs — any app with a custom text engine).
     // Saves and restores the clipboard so nothing is lost.
-    // Targets the app by PID so the event reaches the right window even if focus shifts.
+    // Activates the target app so the session event tap delivers ⌘V to the right window
+    // even if something briefly grabbed focus during transcription.
     private static func pasteViaClipboard(_ text: String, targetPid: pid_t) {
         let pb = NSPasteboard.general
         let saved = pb.string(forType: .string)
         pb.clearContents()
         pb.setString(text, forType: .string)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        // Bring target to front so the session event tap reaches it
+        NSRunningApplication(processIdentifier: targetPid)?.activate()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             let src = CGEventSource(stateID: .combinedSessionState)
             if let dn = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true),
                let up = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false) {
                 dn.flags = .maskCommand
                 up.flags = .maskCommand
-                dn.postToPid(targetPid)
-                up.postToPid(targetPid)
+                dn.post(tap: .cgAnnotatedSessionEventTap)
+                up.post(tap: .cgAnnotatedSessionEventTap)
             }
             print("VTT: clipboard paste fired to pid \(targetPid)")
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             pb.clearContents()
             if let saved { pb.setString(saved, forType: .string) }
         }
