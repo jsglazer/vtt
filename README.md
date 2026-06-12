@@ -1,5 +1,9 @@
 # VTT — Voice to Text at Cursor
 
+[![GitHub release](https://img.shields.io/github/v/release/jsglazer/vtt?logo=github)](https://github.com/jsglazer/vtt/releases)
+[![GitHub license](https://img.shields.io/github/license/jsglazer/vtt)](https://github.com/jsglazer/vtt/blob/main/LICENSE)
+[![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
+
 A macOS menu bar app that transcribes your voice and types the text wherever your cursor is. Press a hotkey to start speaking; words appear at the cursor as each segment is recognized.
 
 Built in Swift using [WhisperKit](https://github.com/argmaxinc/WhisperKit) — Apple Silicon native, CoreML/ANE optimized, fully offline.
