@@ -9,7 +9,7 @@ final class Transcriber {
     func load() async {
         do {
             // openai_whisper-small.en is the English-only small model — faster than multilingual
-            kit = try await WhisperKit(model: "openai_whisper-small.en", verbose: false)
+            kit = try await WhisperKit(model: "openai_whisper-large-v2", verbose: false)
             isReady = true
             print("VTT: model ready")
         } catch {

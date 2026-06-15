@@ -1,6 +1,7 @@
 # VTT — Voice to Text at Cursor
 
 [![GitHub release](https://img.shields.io/github/v/release/jsglazer/vtt?logo=github)](https://github.com/jsglazer/vtt/releases)
+[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![GitHub license](https://img.shields.io/github/license/jsglazer/vtt)](https://github.com/jsglazer/vtt/blob/main/LICENSE)
 [![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
 
