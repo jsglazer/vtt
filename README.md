@@ -4,6 +4,7 @@
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jsglazer/vtt/blob/main/LICENSE)
 [![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
+[![Gemini Flash Antigravity](https://img.shields.io/badge/Gemini%20Flash-Antigravity-4f86f7?logo=google-gemini&logoColor=white)](https://github.com/google-gemini)
 
 A macOS menu bar app that transcribes your voice and types the text wherever your cursor is. Press a hotkey to start speaking; words appear at the cursor as each segment is recognized.
 
