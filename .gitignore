@@ -5,3 +5,5 @@
 DerivedData/
 *.resolved
 ClaudeStatus.md
+# Local build output (MakeDMG.sh)
+build_log.txt
